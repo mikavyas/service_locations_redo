@@ -15,13 +15,18 @@
     <style>
       body { margin: 0; padding: 0; }
       #map { position: absolute; top: 0; bottom: 0; width: 100%; }
-      #location-selector { position: absolute; top: 10px; left: 10px; z-index: 1; }
+      .location-container { position: absolute; top: 10px; right: 10px; z-index: 1; background-color: white; padding: 10px; border-radius: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+      #location-selector { margin-right: 10px; }
+      .btn { padding: 5px 10px; background-color: #314ccd; color: white; border: none; border-radius: 5px; cursor: pointer; }
     </style>
   </head>
 
   <body>
     <div id="map"></div>
-    <select id="location-selector" class="select select--stroke select--sm"></select>
+    <div class="location-container">
+      <select id="location-selector" class="select select--stroke select--sm"></select>
+      <button id="pick-location-btn" class="btn">Pick Location</button>
+    </div>
 
     <div class="absolute fl my24 mx24 py24 px24 bg-gray-faint round">
       <form id="params">
@@ -70,6 +75,7 @@
 
       const params = document.getElementById('params');
       const locationSelector = document.getElementById('location-selector');
+      const pickLocationBtn = document.getElementById('pick-location-btn');
 
       const urlBase = 'https://api.mapbox.com/isochrone/v1/mapbox/';
       let profile = 'cycling';
@@ -127,7 +133,7 @@
       }
 
       // Fetch and parse CSV file
-      Papa.parse('https://https://raw.githubusercontent.com/mikavyas/service_locations_redo/main/Service%20Ontario%20GeoData%20CSV.csv', {
+      Papa.parse('https://raw.githubusercontent.com/mikavyas/service_locations/main/locations.csv', {
         download: true,
         header: true,
         complete: (results) => {
@@ -135,9 +141,9 @@
         }
       });
 
-      // Event listener for location selector
-      locationSelector.addEventListener('change', (event) => {
-        const selectedOption = event.target.options[event.target.selectedIndex];
+      // Event listener for pick location button
+      pickLocationBtn.addEventListener('click', () => {
+        const selectedOption = locationSelector.options[locationSelector.selectedIndex];
         lon = parseFloat(selectedOption.getAttribute('data-lon'));
         lat = parseFloat(selectedOption.getAttribute('data-lat'));
         marker.setLngLat([lon, lat]).addTo(map);
