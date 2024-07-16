@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Isochrone Map with Service Ontario Locations</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- Mapbox GL JS -->
+    <script src="https://api.tiles.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
+    <link href="https://api.tiles.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css" rel="stylesheet" />
+    <!-- Mapbox Assembly -->
+    <link href="https://api.mapbox.com/mapbox-assembly/v1.3.0/assembly.min.css" rel="stylesheet" />
+    <script src="https://api.mapbox.com/mapbox-assembly/v1.3.0/assembly.js"></script>
+    <!-- PapaParse for CSV Parsing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+    <style>
+      body { margin: 0; padding: 0; }
+      #map { position: absolute; top: 0; bottom: 0; width: 100%; }
+      #location-selector { position: absolute; top: 10px; left: 10px; z-index: 1; }
+    </style>
+  </head>
+
+  <body>
+    <div id="map"></div>
+    <select id="location-selector" class="select select--stroke select--sm"></select>
+
+    <div class="absolute fl my24 mx24 py24 px24 bg-gray-faint round">
+      <form id="params">
+        <h4 class="txt-m txt-bold mb6">Choose a travel mode:</h4>
+        <div class="mb12 mr12 toggle-group align-center">
+          <label class="toggle-container">
+            <input name="profile" type="radio" value="walking" />
+            <div class="toggle toggle--active-null toggle--null">Walking</div>
+          </label>
+          <label class="toggle-container">
+            <input name="profile" type="radio" value="cycling" checked />
+            <div class="toggle toggle--active-null toggle--null">Cycling</div>
+          </label>
+          <label class="toggle-container">
+            <input name="profile" type="radio" value="driving" />
+            <div class="toggle toggle--active-null toggle--null">Driving</div>
+          </label>
+        </div>
+        <h4 class="txt-m txt-bold mb6">Choose a maximum duration:</h4>
+        <div class="mb12 mr12 toggle-group align-center">
+          <label class="toggle-container">
+            <input name="duration" type="radio" value="10" checked />
+            <div class="toggle toggle--active-null toggle--null">10 min</div>
+          </label>
+          <label class="toggle-container">
+            <input name="duration" type="radio" value="20" />
+            <div class="toggle toggle--active-null toggle--null">20 min</div>
+          </label>
+          <label class="toggle-container">
+            <input name="duration" type="radio" value="30" />
+            <div class="toggle toggle--active-null toggle--null">30 min</div>
+          </label>
+        </div>
+      </form>
+    </div>
+
+    <script>
+      mapboxgl.accessToken = 'pk.eyJ1IjoibWlrYXZ5YXMiLCJhIjoiY2xoczhjcDR1MGZqMzNjcW1scm1paTRpNyJ9.yYDAti9jKKB23RGPg8SeRA';
+
+      const map = new mapboxgl.Map({
+        container: 'map',
+        style: 'mapbox://styles/mapbox/streets-v12',
+        center: [-77.0369, 38.895],
+        zoom: 11.5
+      });
+
+      const params = document.getElementById('params');
+      const locationSelector = document.getElementById('location-selector');
+
+      const urlBase = 'https://api.mapbox.com/isochrone/v1/mapbox/';
+      let profile = 'cycling';
+      let minutes = 10;
+      let lon = -77.034;
+      let lat = 38.899;
+      const marker = new mapboxgl.Marker({ 'color': '#314ccd' });
+
+      async function getIso() {
+        const query = await fetch(`${urlBase}${profile}/${lon},${lat}?contours_minutes=${minutes}&polygons=true&access_token=${mapboxgl.accessToken}`, { method: 'GET' });
+        const data = await query.json();
+        map.getSource('iso').setData(data);
+      }
+
+      params.addEventListener('change', (event) => {
+        if (event.target.name === 'profile') {
+          profile = event.target.value;
+        } else if (event.target.name === 'duration') {
+          minutes = event.target.value;
+        }
+        getIso();
+      });
+
+      map.on('load', () => {
+        map.addSource('iso', {
+          type: 'geojson',
+          data: { 'type': 'FeatureCollection', 'features': [] }
+        });
+
+        map.addLayer({
+          'id': 'isoLayer',
+          'type': 'fill',
+          'source': 'iso',
+          'layout': {},
+          'paint': {
+            'fill-color': '#5a3fc0',
+            'fill-opacity': 0.3
+          }
+        }, 'poi-label');
+
+        marker.setLngLat([lon, lat]).addTo(map);
+        getIso();
+      });
+
+      // Function to handle CSV data and populate location selector
+      function handleCSVData(data) {
+        data.forEach((row, index) => {
+          const option = document.createElement('option');
+          option.value = index;
+          option.text = row.city;
+          option.setAttribute('data-lon', row.lng);
+          option.setAttribute('data-lat', row.lat);
+          locationSelector.appendChild(option);
+        });
+      }
+
+      // Fetch and parse CSV file
+      Papa.parse('https://raw.githubusercontent.com/mikavyas/service_locations/main/locations.csv', {
+        download: true,
+        header: true,
+        complete: (results) => {
+          handleCSVData(results.data);
+        }
+      });
+
+      // Event listener for location selector
+      locationSelector.addEventListener('change', (event) => {
+        const selectedOption = event.target.options[event.target.selectedIndex];
+        lon = parseFloat(selectedOption.getAttribute('data-lon'));
+        lat = parseFloat(selectedOption.getAttribute('data-lat'));
+        marker.setLngLat([lon, lat]).addTo(map);
+        getIso();
+      });
+    </script>
+  </body>
+</html>
