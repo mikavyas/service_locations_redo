@@ -147,6 +147,14 @@
         lon = parseFloat(selectedOption.getAttribute('data-lon'));
         lat = parseFloat(selectedOption.getAttribute('data-lat'));
         marker.setLngLat([lon, lat]).addTo(map);
+
+      // Fly to the selected location with a zoom level of 14
+      map.flyTo({
+        center: [lon, lat],
+        zoom: 14,  // Adjust the zoom level as needed
+        essential: true // This ensures the animation works smoothly
+      });
+        
         getIso();
       });
     </script>
